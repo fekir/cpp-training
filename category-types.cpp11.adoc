@@ -1,0 +1,170 @@
+== Category types
+
+Move semantic is achieved by adding a new category type to the type system, it is not a library feature and cannot be reproduced in {cpp}03.
+
+The value categories in {cpp} changed from C during it's first standardisation, then changed in {cpp}11 to enable move semantic, and again in {cpp}17 do enable further optimisation (for example returning non-moveable and non-copyable types from functions).
+
+So, depending on the context/language revision, categorie values have different definitions.
+
+=== Category values in K&R C
+
+[source,c,tabsize=2]
+----
+int i = 42;    // i is lvalue, 42 is rvalue
+42 = i;        // invalid, 42 is not an rvalue
+int* p = &i;   // p is lvalue, i is lvalue, and &i is lvalue
+int* q = &42;  // invalid, 42 is not an rvalue
+----
+
+`i` is an lvalue (on the left-hand side-of an assignment)
+`42` is an rvalue (only on the right-hand-side of an assignment)
+
+Variables are lvalue, literals (except string literals) and functions are rvalues.
+
+[%notitle]
+=== Category values in K&R C
+
+String literals are rvalue, otherwise it would not be possible to take the address to the first element:
+
+[source,c,tabsize=2]
+----
+char* string = "Hello World";
+----
+
+=== Category values in C
+
+Same as K&R C, but there is just `lvalue`.
+Also some rules have been added to support `const`.
+
+string literals are constant lvalues.
+Function and other literals count as others.
+
+[%notitle]
+=== Category values in C
+
+`const` applies to lvalue expressions.
+const-qualified types are not modifiable lvalues, for example, they are not assignable.
+
+A pointer to an non-const type can be implicitly converted to a pointer to a const-qualified version of the same or compatible type.
+The reverse conversion can be performed only with an explicit cast.
+
+[source,c,tabsize=2]
+----
+const int c = 0;    // c is an lvalue
+c = 42;             // error, c is const-qualified and not assignable
+const int* p = &c;  // c is an lvalue
+int* p = &c;        // error, const int* is not convertible to int*
+const int* q = &42; // invalid, 42 is an rvalue
+----
+
+=== Category values in {cpp} <11
+
+{cpp}98 and {cpp}03 followed C and restored the name "rvalue" to non-lvalue expressions.
+
+Some expression, like functions count are lvalues (they have an address too, like string literals).
+
+References can bind to lvalues, but only references to const can bind to rvalues.
+In the second case, the lifetime of the object is extended until the scope of the reference ends.
+
+General rule: if it is possible to take an address, or it has a name, then it's a lvalue.
+
+[%notitle]
+=== Category values in {cpp} <11
+
+[source,cpp,tabsize=2]
+----
+int& c = 42;       // invalid, 42 is rvalue, cannot bind reference to it
+const int& c = 42; // c is lvalue, 42 is rvalue, but references to const can bind to rvalues
+
+int j = 42;  // j is lvalue, 42 is rvalue
+int& c = j;  // c,j are both lvalue
+int& c = j;  // invalid c, j are both lvalue, but the conversion is invalid
+
+foo(int&);
+foo(42);  // error, cannot bind lvalue to rvalue
+
+int baz();       // returns a rvalue
+bar(const int&); // takes const reference
+bar(baz());      // const reference can bind to rvalue
+
+void f( const std::string& s );
+f( "foobar" ); // const reference can bind to rvalue (array is converted to temporary std::string)
+----
+
+//Check: rvalue references to functions are treated as lvalues whether named or not.
+//Functions don't have lifetime or storage duration, so the lvalue/rvalue distinction doesn't make much sense for them, does it?
+
+=== Category values in {cpp} >=11 and <17
+
+{cpp}11 and {cpp}14 introduced new values to enable move semantic.
+Value categories were redefined to characterize two https://www.stroustrup.com/terminology.pdf[independent properties of expressions]:
+
+   * has identity: it's possible to determine if two expression refers to the same entity, for example by comparing addresses of the objects.
+   * can be moved from: move constructor, or another function overload that implements move semantics can bind to the expression.
+
+[%notitle]
+=== Category values in {cpp} >=11 and <17
+
+Thus there are expression that
+
+    * have identity and cannot be moved from (lvalue expressions)
+    * have identity and can be moved from (xvalue (eXpiring Value) expressions)
+    * do not have identity and can be moved from are (prvalue ("pure rvalue") expressions);
+    * do not have identity and cannot be moved from (unused).
+
+[%notitle]
+=== Category values in {cpp} >=11 and <17
+
+The expressions that have identity are called "glvalue expressions" (glvalue stands for "generalized lvalue").
+Both lvalues and xvalues are glvalue expressions.
+The expressions that can be moved from are called "rvalue expressions". Both prvalues and xvalues are rvalue expressions. 
+
+
+[%notitle]
+=== Category values in {cpp} >=11 and <17
+
+image::value-types.cpp11.png[value types]
+
+
+[%notitle]
+=== Category values in {cpp} >=11 and <17
+
+Notice that both lvalue and rvalue where reused with similar meaning, and following relation holds in all {cpp} standards:
+
+Every value is either an lvalue or an rvalue, never both.
+
+glvalue stands for generalized lvalue.
+
+[%notitle]
+=== Category values in {cpp} >=11 and <17
+[source,cpp,tabsize=2]
+----
+std::string s;
+std::move(s) = "hello"; // ok
+auto v = std::move(s);  // ok, 
+auto r = &std::move(s); // invalid, xvalue
+----
+
+Only rvalues can bind to rvalue references.
+Only lvalues can bind to non-const lvalue references (but rvalues can bind to const lvalue references)
+
+[%notitle]
+=== Category values in {cpp} >=11 and <17
+
+In practice:
+
+	* Everything that has a name (local/global/member variable, parameters, function, ...), `*this`, and string literals are lvalue.
+	** If the type of an expression is an lvalue reference (`T&`, `const T&`, etc.), that expression is an lvalue.
+	* All literals (`42`, `nullptr`, `-1f`, enums, ... strings exlcuded), `this`, lambda, return of constructor call and value returned from functions are prvalue.
+	* returned value reference (by std::move) and cast to rvalue reference are xvalue.
+
+//=== Overloading rules
+
+//int   prvalue();
+//int&  lvalue();
+//int&& xvalue();
+
+//void foo(int&& t) {
+//  // t is initialized with an rvalue expression
+//  // but is actually an lvalue expression itself
+//}

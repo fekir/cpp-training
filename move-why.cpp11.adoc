@@ -1,0 +1,185 @@
+== Move is not a silver bullet, it has issues too
+
+=== Not every type is moveble (and/or copyable)
+
+[source,cpp,tabsize=2]
+----
+class openfile {
+		FILE* f;
+	public:
+		explicit openfile(const char* filename) : f(std::fopen(filename, "rw")){
+			if(!f){throw std::runtime_error("unable to open file");}
+		}
+		~openfile(){fclose(f);}
+		void write(const char* message);
+		// copy suppressed
+};
+----
+
+Where should `f` point if `openfile` has been moved from?
+If the class wants to support move semantic, it has to change it's invariants.
+
+=== Language complexity
+
+It makes the language specification more complex.
+
+=== Which advantages does move-semantic provide?
+
+Performance, returning by value is cheap
+
+[source,cpp,tabsize=2]
+----
+std::vector<std::string> create() {
+	std::vector<std::string> coll;
+	// ...
+	return coll; // no copies, garanteed by the standard, because of std::vector<T>(std::vector<T>&&);
+}
+
+std::vector<std::string> v = create();
+----
+
+[%notitle]
+=== Which advantages does move-semantic provide
+
+Performance, temporaries (unnamed) are cheap
+
+[source,cpp,tabsize=2]
+----
+std::vector<std::string> create() {
+	std::vector<std::string> coll;
+	// ..
+	coll.push_back(s+s); // no copies, because of push_back(T&&) and std::string(std::string&&);
+	// ...
+	return coll;
+}
+
+std::vector<std::string> v = create();
+----
+
+[%notitle]
+=== Which advantages does move-semantic provide
+
+Performance, it is possible to "mark" manually a value as temporary
+
+[source,cpp,tabsize=2]
+----
+std::vector<std::string> create() {
+	std::vector<std::string> coll;
+	// ...
+	coll.push_back(std::move(s)); // no copies, because of push_back(T&&) and std::string(std::string&&);
+	return coll;
+}
+
+std::vector<std::string> v = create();
+----
+
+[%notitle]
+=== Which advantages does move-semantic provide
+
+Simpliciteness, as it is possible to return uncopyable (but moveable) types from function without adding further indirections.
+
+[source,cpp,tabsize=2]
+----
+struct type_with_costly_or_no_copy_constructor{ /* ... */};
+
+// allocates unnecessarily (which is a costly operation) to avoid a potential copy
+// should the caller check for nullptr?
+// is it an owning pointer? should it free it?
+type_with_costly_or_no_copy_constructor* factory();
+
+// no overhead, less documentation needed
+type_with_costly_or_no_copy_constructor factory();
+----
+
+[%notitle]
+=== Which advantages does move-semantic provide
+
+Correctness, before {cpp}11 it was not possible to implement something like `std::unique_ptr`.
+It's {cpp}03 counterpart, `std::auto_ptr` has been declared as broken beyond repair.
+
+It's copy constructor does not copy, so, for example, it' not safe to use with stl algorithms, containers and other functions.
+
+[source,cpp,tabsize=2]
+----
+// suppose that all pointer are != nullptr
+std::auto_ptr<int> v[N] = { /* ... */ };
+std::sort(v, v + N,
+  [](const std::auto_ptr<int>& lhs, const std::auto_ptr<int>& rhs){
+      return *lhs < *rhs;
+}); // might crash if sort makes an internal temporary copy
+----
+
+[%notitle]
+=== Which advantages does move-semantic provide
+
+Consistency, eases generic programming.
+The containers and algorithm from the standard library do work correctly (TM) with `std::unique_ptr`, but do not with `std::auto_ptr`.
+And they do not require any special or separate implementation.
+
+[%notitle]
+=== Which advantages does move-semantic provide
+
+Perfomance improvement for Exception safety/code correctness.
+
+
+=== Exception safety
+
+	* No-throw guarantee: Operations are guaranteed to succeed and satisfy all requirements even in exceptional situations.
+	* Strong exception safety (commit/rollback semantics): Operations can fail, but failed operations are guaranteed to have no side effects, leaving the original values intact.
+	* Basic exception safety (no-leak guarantee): Partial execution of failed operations can result in side effects, but all invariants are preserved and there are no resource leaks. Any stored data will contain valid values.
+	* No exception safety: No guarantees are made.
+
+[%notitle]
+=== Exception safety
+
+All classes in the standard have at least a basic exception safety garantuee, some classes have even a no-throw guarantee.
+(All classes should aim at least for the basic exception safety.)
+
+`std::vector::push_back`, http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2011/n3242.pdf#section.23.2[for example], has a "strong exception garantuee" (https://en.cppreference.com/w/cpp/container/vector/push_back[cppreference] normally documents the exception garantees)
+
+[source,cpp,tabsize=2]
+----
+struct T { /* */ };
+void foo(std::vector<T>& ts, const T& t){
+	ts.push_back(t);
+}
+----
+
+[%notitle]
+=== Exception safety
+
+It is possible for `push_back`, to provide a strong exception garantuee, even if there is no space left in the buffer
+
+	* allocate a new, bigger buffer
+	* copy all values in the new buffer
+	* destroy the old values/deallocate the old buffer
+
+As destructor normally have the no-throw garantuee, if one of the first step fails (throws), `ts` is left unchanged.
+Providing this strong garantuee, means a lot of potentially unnecessary works, especially if most of the time every step succeeds.
+
+[%notitle]
+=== Exception safety
+
+With move semantic, supposing that the move constructor does not throw(!), it is possible to
+
+	* allocate a new, bigger buffer
+	* move all values in the new buffer
+	* destroy the old values/deallocate the old buffer
+
+Which is generally faster than temporarely copying the whole vector.
+
+[%notitle]
+=== Exception safety
+
+If a move constructor/assingment operator throws, then it is not possible to restore the old values, as 
+
+	* the status of the moved value that throwed is unknown
+	* even supposing that the value is unchanged, moving the values back to the old buffer might cause another move constructor to fail
+
+Therefore if the move operator is not `noexcept` (ie: it does provide the no-throw garantuee), then `std::vector` will copy the values in order to provide the strong exception garantuee.
+
+
+[%notitle]
+=== Exception safety
+
+In practice it is uncommon have a non-`noexcept` constructor, just as having a non-`noexcept` destructor, unless moving is equivalent to copying.

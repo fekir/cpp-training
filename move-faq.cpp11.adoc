@@ -1,0 +1,45 @@
+== FAQ about move
+
+=== Is it possible to write a copy constructor that takes by non-const reference or a move constructor that can throw?
+
+Yes.
+Such code should be banned.
+
+`auto_ptr` is one of those rare types that has been *removed* from {cpp}, and it did not work correctly in many situations.
+
+=== I wrote `std::move(a)`, why did `a` 's value not change?
+
+Because moving from an object a can modify its value, but doesn’t have to.
+This is the same as any other non-const operation on a.
+
+=== Is the "moved-from" state special?
+
+The state of a variable after it has been moved from is just as special as the state after any other non-const operation.
+
+=== What does "valid but unspecified state" mean?
+
+The object continues to be a valid object of its type, its value might or might not have been modified.
+The standard library specifies this guarantee for all standard types.
+There are no garantuees for user-defined types.
+
+All well-behaved types should probably do the same.
+
+=== Does "but unspecified" mean the object's invariants might not hold?
+
+If any const function on an object makes it invalid, probably the function has a bug, or the class does not have the supposed invariant.
+
+In {cpp}, an object is valid (meets its invariants) for its entire lifetime, which is from the end of its construction to the start of its destruction.
+
+Moving from an object does not end its lifetime, only destruction does.
+
+=== Does "moved-from" correspond to "partially formed" described in Elements of Programming (EoP)?
+
+No, EoP requires such objects only to be assignable and destroyable.
+The {cpp} standard makes a broader statement: "operations on the object behave as specified for its type" and a moved-from object "must still meet the requirements of the library component that is using it."
+
+=== What can I do with a moved-from object?
+
+Some classes documents a moved-from state (like `std::unique_ptr`), but generally only operations without preconditions are allowed.
+
+Especially in generic code, only operations like destruction, or somehow resettings the state of the object are sensible operations.
+The standard library in practice follows the "partially formed" definition from EoP, because there are generally no other sensible operations to do.

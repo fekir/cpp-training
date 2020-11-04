@@ -1,0 +1,235 @@
+== Move and value semantic
+
+Without changing a single line of code, simply switching to {cpp}11 might make your code faster by recompiling
+
+=== Copy semantic of {cpp}03
+
+[source,cpp,tabsize=2]
+----
+std::vector<std::string> create() {
+	std::vector<std::string> coll;
+	coll.reserve(3); // +1
+
+	std::string s = "data"; // +1
+	coll.push_back(s); // +1
+	coll.push_back(s+s); // +2, -1, creates and destroy temporary
+	coll.push_back(s); // +1
+	return coll; // +4/ -1 for s, -4 for coll, compiler might not deep copy
+}
+
+std::vector<std::string> v = create();
+----
+
+10 allocation and 6 deallocations for creating a vector with 3 elements.
+If we would have constructed them in place, we would have done 4 allocations and no deallocations.
+
+[%notitle]
+=== Copy semantic of {cpp}03
+Notice that the {cpp} standards has an "as-if" rule, that gives a compiler the possibility to perform all transformations it wants as long as the "observable behaviour" is unaffected.
+As the standard does not mention anything about performance, compiler authors take advantage of that to optimize the code as much as possible.
+
+
+[%notitle]
+=== Copy semantic of {cpp}03
+
+The {cpp} standard also gave the possibility to change the observable behaviour in some situations, one of those is when copying values.
+Compilers are permitted (but not obliged, as with all optimisations) to assume that the copy constructor copies, and thus optimize temporaries away.
+
+Such techniques are commonly referred as copy elision, and are supported by the mainstream compiler long ago.
+
+
+[%notitle]
+=== Copy semantic of {cpp}03
+Some reference on copy-elision:
+
+	* https://archive.org/details/moreeffectivec3500meye[Scott Meyers, More Effective C++, published in 1996]
+	* https://docs.microsoft.com/en-us/previous-versions/ms364057(v=vs.80)[Visual Studio 2005]
+	* https://www.drdobbs.com/move-constructors/184403855[Copy elision explained (2003)]
+
+
+And obbligatory examples with https://godbolt.org/z/s7PrrE[compiler explorer]
+
+
+
+=== Copy semantic of {cpp}03
+
+Thus, with a more optimistic analysis
+
+[source,cpp,tabsize=2]
+----
+std::vector<std::string> create() {
+	std::vector<std::string> coll;
+	coll.reserve(3); // +1
+
+	std::string s = "data"; // +1
+	coll.push_back(s); // +1
+	coll.push_back(s+s); // +2, -1, creates and destroy temporary
+	coll.push_back(s); // +1
+	return coll; // -1 for s
+}
+
+std::vector<std::string> v = create();
+----
+
+6 allocation and 2 deallocations.
+Better than before, still not optimal, and not garanteed by the language, even if tested compilers are consistent.
+
+=== Move semantic since {cpp}11
+
+Same code as before, unchanged.
+
+[source,cpp,tabsize=2]
+----
+std::vector<std::string> create() {
+	std::vector<std::string> coll;
+	coll.reserve(3); // +1
+
+	std::string s = "data"; // +1
+	coll.push_back(s); // +1
+	coll.push_back(s+s); // +1, temporary is "moved"
+	coll.push_back(s); // +1
+	return coll; // -1 for s, compiler might not "move"
+}
+
+std::vector<std::string> v = create();
+----
+
+5 allocations, one deallocation.
+Still not optimal, but better than before, and we do not rely on the smartness of the compiler to remove allocations.
+
+=== Move semantic since {cpp}11
+
+[source,cpp,tabsize=2]
+----
+std::vector<std::string> create() {
+	std::vector<std::string> coll;
+	coll.reserve(3); // +1
+
+	std::string s = "data"; // +1
+	coll.push_back(s); // +1
+	coll.push_back(s+s); // +1
+	coll.push_back(std::move(s)); // +0, we do not need s anymore
+	return coll; // 0, compiler might not move
+}
+
+std::vector<std::string> v = create();
+----
+
+4 allocations, no deallocations.
+Optimal, and without passing pointers or making containers more error-prone to use (like accessing directly the internal buffer)
+
+=== Vectors in {cpp}03
+
+[source,cpp,tabsize=2]
+----
+template<typename T>
+class vector {
+	// ...
+	public:
+	void push_back(const T& elem);
+};
+----
+
+Containers have value semantic.
+
+=== Vectors in {cpp}11
+
+[source,cpp,tabsize=2]
+----
+template<typename T>
+class vector {
+	// ...
+	public:
+	void push_back(const T& elem); // takes lvalue reference
+	void push_back(T&& elem);      // takes rvalue reference
+};
+----
+
+With rvalue references it is possible to provide move semantic.
+They represent modifiable objects where the value is no longer needed.
+This makes a new class of optimisations possible.
+
+=== Adding move semantic, rule of five
+
+Provide a move constructor and a move assignment operator:
+
+[source,cpp,tabsize=2]
+----
+class string { 
+	//~string()
+	//string(const string&);
+	//string& operator=(string that);
+	string(string&& that) : 
+	 size(that.size), data(that.data) {
+		that.size = 0;
+		that.data = nullptr;
+	}
+	string& operator=(string&& that) {
+		std::swap(data, that.data);
+		std::swap(size, that.size);
+		return *this;
+	}
+};
+----
+
+=== Adding move semantic, rule of zero
+
+[source,cpp,tabsize=2]
+----
+class name {
+		std::string n;
+	public:
+		explicit name(const std::string& n_) : n(n_) {
+		  // establish invariants, validate input parameters, ...
+		}
+	// no other special functions:
+	//  they are already correct and optimal
+};
+----
+
+No changes where necessary.
+Manualy handling resources is a code smell.
+So is implementing the special functions.
+
+=== Rule of Five
+
+If at least one of the following 5 special member functions is declared
+
+  * copy constructor
+  * move constructor
+  * copy assignment operator
+  * move assignment operator
+  * destructor
+
+then you should declare them all.
+
+////////////////////// //// //// //// //// //// //// //// //// //// //// //// //// //// //// //// //// //// //// ////
+
+== Move: as a library user
+
+In {cpp}, copying or moving from an object `a` to an object `b` sets `b` to the original value of `a`.
+
+The difference between the two operations is that copying from `a` won't change `a`, but moving from `a` might.
+
+[%notitle]
+=== Move: as a library user
+
+{cpp} already uses move automatically when copying from an object it knows will never be used again, such as a 
+
+	* temporary object
+	* local variable being returned
+	* local variable thrown from a function
+
+=== Move: for author of a type
+
+Copying is a `const` operation on `a`.
+This is why copy construction/assignment functions should always take their parameter by `const&` or value.
+
+Move is a `noexcept` and non-`const` operation on `a`.
+Move construction/assignment functions should always be `noexcept` and take their parameter by (non-`const`) `&&`.
+
+[%notitle]
+=== Move: for types author
+
+For copyable types, move is always an optimization of copy.
+When not following the rule of zero, explicitly write move functions for the type if copying is expensive enough to be worth optimizing, since copy is a valid implementation of move.

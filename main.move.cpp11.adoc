@@ -1,0 +1,16 @@
+= {cpp}11
+:source-highlighter: highlightjs
+:data-uri:
+:revealjs_theme: solarized
+
+Move semantic
+
+include::./value-semantic.cpp11.adoc[]
+
+include::./move-semantic.cpp11.adoc[]
+
+include::./move-faq.cpp11.adoc[]
+
+include::./move-why.cpp11.adoc[]
+
+include::./category-types.cpp11.adoc[]

@@ -1,0 +1,118 @@
+== Value semantic
+
+Value semantic is one of the pillars of modern {cpp}
+
+[%notitle]
+=== Value semantic
+
+Objects and variables usually have value semantics. 
+
+  * They are directly stored in memory
+  * normally not created with new
+
+Copying an object creates a new distinct objects
+
+  * with its value in its own memory
+  * and its own lifetime
+
+=== Value semantic by example
+
+[source,cpp,tabsize=2]
+----
+int main(){
+	int x = 42;
+	int y = x;
+	++x
+	std::cout << x << " " << y << '\n';
+
+	std::string s = "data";
+	std::string t = s;
+
+	if (s == t){
+		std::cout << "s and t are equal\n";
+	}
+	s[0] = 'D';
+	if (s != t){
+		std::cout << "s and t are not equal\n";
+	}
+}
+----
+
+[%notitle]
+=== Value semantic by example
+
+[source,cpp,tabsize=2]
+----
+struct data {std::sting blob;};
+void foo(data d, std::vector<data>& vec){
+	vec.push_back(d);
+	d.blob = "new data";
+	// ...
+}
+----
+
+In reference-based languages, modifying `d` would normally also modify `vec`.
+This makes it harder to reason where values are changed even in single-threaded environments.
+
+=== Implementing value semantic 
+
+Before {cpp}11
+
+[source,cpp,tabsize=2]
+----
+class string {
+	size_t size;
+	char* data;
+
+ public:
+	explicit string(const char* p) :
+	 size(strlen(p)+1), data(new char[size]) {
+		memcpy(data, p, size);
+	}
+
+	~string() {
+		delete[] data;
+	}
+
+	string(const string& that) : 
+	 size(that.size), data(new char[size]) {
+		memcpy(data, that.data, size);
+	}
+
+	string& operator=(string that) {
+		std::swap(data, that.data);
+		std::swap(size, that.size);
+		return *this;
+	}
+};
+----
+
+=== The rule of three and the rule of zero
+
+The rule of three states that if a class defines any of the following then it should probably explicitly define all three
+
+  * destructor
+  * copy constructor
+  * copy assignment operator
+
+[%notitle]
+=== The rule of three and the rule of zero
+
+Notice: this rule changes in {cpp}11, so if your class does not rely on the implicitely generated special functions, it won't take advantage of important optimisation opportunities introduced in never versions of {cpp}.
+
+=== A name class with value semantic
+
+[source,cpp,tabsize=2]
+----
+class name {
+		std::string n;
+	public:
+		explicit name(const std::string& n_) : n(n_) {
+		  // establish invariants, validate input parameters, ...
+		}
+	// no other special functions:
+	//  destructor, copy-constructor, assignment operator are already correct and optimal
+};
+----
+
+This class implements value semantic and will already take advantage of features introduced in newer standards.
