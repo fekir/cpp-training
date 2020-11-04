@@ -1,0 +1,33 @@
+== `override`
+
+Works similarly to other languages, like java
+
+
+[source, cpp]
+----
+struct base {
+	virtual void foo(unsigned int);
+};
+struct derived : base {
+	void foo(unsigned int) override;
+};
+----
+
+Triggers a compile-error if `base::foo` changes signature or is not `virtual` anymore.
+
+[%notitle]
+=== `override`
+
+Can be used for destructors too
+
+[source, cpp]
+----
+struct base{
+	virtual ~base();
+};
+struct derived : base {
+	~derived() override;
+};
+----
+
+As destructors cannot change signature, the advantage in this case is that in case `~base()` is not `virtual` anymore, instead of triggering UB, it's a compiler error.

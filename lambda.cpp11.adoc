@@ -1,0 +1,120 @@
+== lambda
+
+Notice that in {cpp} (and C), it is only possible to provide a function declaration inside a function, not to provide an implementation.
+
+Lambdas gives us the possiblity to implement local (even stateful) functions.
+
+=== Syntax
+
+[source, cpp, tabsize=2]
+----
+[ captures ] ( params ) -> ret { body }
+[ captures ] ( params )        { body }
+[ captures ]                   { body }
+----
+
+A lambda expression defines an unique class type.
+
+The captures is a comma-separated list of zero or more captures and/or `&` and `=`;
+it defines the variables that are accessible from within the lambda.
+
+  * `&` captures the used variables by reference
+  * `=` captures the used variables by copy
+
+=== Glue code for algorithms
+
+[source,cpp,tabsize=2]
+----
+// without lambda, requires global function
+bool less_five(int n){ return n < 5;}
+
+void foo(std::vector<int>& c){
+  c.erase(
+    std::remove_if(c.begin(), c.end(), less_five), 
+    c.end()
+  );
+}
+
+// with lambda
+void bar(std::vector<int>& c){
+  c.erase(
+    std::remove_if(c.begin(), c.end(), [](int n){ return n < 5; }), 
+    c.end()
+  );
+}
+----
+
+[%notitle]
+=== Glue code for algorithms
+
+[source,cpp,tabsize=2]
+----
+// without lambda, requires global class declaration (until c++03)
+struct less_than{ 
+  int sup;
+  less_than(int sup_) : sup(sup_){};
+  bool operator()(int n){return n < sup;}
+};
+void foo(std::vector<int>& c, int sup){
+  c.erase(
+    std::remove_if(c.begin(), c.end(), less_than(sup)),
+    c.end()
+  );
+}
+
+// with lambda
+void bar(std::vector<int>& c, int sup){
+  c.erase(
+    std::remove_if(c.begin(), c.end(), [sup](int n){return n < sup;}),
+    c.end()
+  );
+}
+----
+
+=== Stateful functions (without globals)
+
+[source,cpp,tabsize=2]
+----
+int i = 0;
+auto counter = [&i](){return ++i;}
+counter(); // returns 1
+counter(); // returns 2
+----
+
+=== non trivial initialisation
+
+So that objects can more easily be defined as constants (for example as alternative to the ternary operator), or in a thread-safe way:
+
+[source,cpp,tabsize=2]
+----
+class complex_obj{ /*...*/ };
+
+const complex_obj co = [](){
+  // ...
+}();
+
+const int i = [](){
+  // ...  
+}();
+----
+
+=== Decay to function pointers
+
+Lambdas can be passed even to C functions(!)
+
+
+[source,cpp,tabsize=2]
+----
+#include <cstdlib>
+
+int main(){
+  atexit([](){std::cout << "goodbye\n";});
+}
+----
+
+unless they have a non-empty capture-list.
+
+=== Lambdas are implemented behind the scenes as structures
+
+
+https://cppinsights.io/lnk?code=I2luY2x1ZGUgPHZlY3Rvcj4KI2luY2x1ZGUgPGFsZ29yaXRobT4KCgp2b2lkIGJhcihzdGQ6OnZlY3RvcjxpbnQ+JiBjLCBpbnQgc3VwKXsKICBjLmVyYXNlKAogICAgc3RkOjpyZW1vdmVfaWYoYy5iZWdpbigpLCBjLmVuZCgpLCBbc3VwXShpbnQgbil7cmV0dXJuIG4gPCBzdXA7fSksCiAgICBjLmVuZCgpCiAgKTsKfQ==&insightsOptions=cpp17&std=cpp17&rev=1.0[example on cppinsights]

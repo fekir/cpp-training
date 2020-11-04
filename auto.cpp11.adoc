@@ -1,0 +1,82 @@
+== `auto`
+
+In C and before {cpp}11, `auto` is used as a counterpart of `static`.
+
+In practice it was never used, so the {cpp} comittee recycled the word for automatically deducing the type of a new object.
+
+Contrary to dynamic languages like python and javascript, type deduction is done at compile time.
+
+[%notitle]
+=== auto
+
+`auto` is especially useful for objects with a specific interface and factory functions, like the iterators
+
+[source,cpp,tabsize=2]
+----
+#include <vector>
+
+std::vector<int> vec = {1, 2, 3};
+auto it = vec.begin();
+----
+
+[%notitle]
+=== auto
+
+
+and especially in templates
+
+[source,cpp,tabsize=2]
+----
+template <class C>
+void print(const C& c){
+  for(typename C::const_iterator it = c.begin(); it != c.end(); ++it){
+    std::cout << *it << '\n';
+  }
+}
+----
+
+vs
+
+[source,cpp,tabsize=2]
+----
+template <class C>
+void print(const C& c){
+  for(auto it = c.begin(); it != c.end(); ++it){
+    std::cout << *it << '\n';
+  }
+}
+----
+
+[%notitle]
+=== auto
+
+auto decays:
+
+  * raw arrays convert to pointers
+  * function converts to function pointers
+  * top-level references are removed
+  * top-level const/volatile qualifiers are removed
+
+Those are the same rules that applies when passing or returning arguments by value.
+
+
+[%notitle]
+=== auto
+
+[source,cpp,tabsize=2]
+----
+int i = 42;
+const int& j = i; // has type const int& and refers to i
+auto v = r;       // same as int v = r
+
+const int arr[4] = {0,1,2,3};
+auto a = arr;      // has type const int*
+
+auto str = "Hello World!"; 
+// str has type const char*, while "..." is of type const char[13]
+
+
+int& foo();
+auto f = foo;   // f has type int&(*)()
+auto x = foo(); // has type int
+----

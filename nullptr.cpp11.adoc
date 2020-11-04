@@ -1,0 +1,43 @@
+== `nullptr`
+
+Value for pointer that do not point anywhere
+
+It is a type-safe version of `NULL`, it converts to any pointer, but not to integral types.
+
+Has a separate type: `std::nullptr_t`
+
+[source,cpp,tabsize=2]
+----
+#include <cstddef>
+
+void foo(int);
+
+foo(0); // calls foo(int)
+foo(NULL); // calls foo(int), probably an error
+foo(nullptr); // compile-time error
+----
+
+=== `nullptr`
+
+[source,cpp,tabsize=2]
+----
+#include <cstddef>
+
+void foo(int);
+void foo(int*);
+
+foo(0);       // foo(int)
+foo(NULL);    // depends on compiler, ambiguos
+foo(nullptr); // foo(int*)
+----
+
+[source,cpp,tabsize=2]
+----
+int i;
+i = 0;
+i = NULL;    // probably an error
+i = nullptr; // compile-time error
+----
+
+
+// see conv.ptr

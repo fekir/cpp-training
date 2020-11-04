@@ -1,0 +1,26 @@
+== Useful tools
+
+[.columns]
+=== Online
+
+[.column]
+	* https://godbolt.org[compiler explorer]
+	* https://wandbox.org/[wandbox online compiler]
+	* https://cppinsights.io/[cppinsight]
+//	* https://build-bench.com[build-bench]
+//	* https://quick-bench.com[quick-bench]
+
+[.column]
+	* https://en.cppreference.com/[cppreference]
+	* https://wg21.link/n3242[{cpp}11 standard draft]
+//	* https://webstore.ansi.org/Standards/INCITS/INCITSISOIEC148822012[official standard]
+	* https://en.cppreference.com/w/cpp/compiler_support[compiler support]
+
+
+=== Offline
+
+	* static analyzers
+	* runtime analyzers
+	* *Compiler*
+
+

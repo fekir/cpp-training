@@ -1,0 +1,62 @@
+== `enum class`
+
+`enum` makes it possible to define integral values with meaningful names, without defining constants and giving them a separate type.
+
+[source,cpp,tabsize=2]
+----
+enum status {open, closed};
+
+void foo(status s);
+
+foo(open);
+foo(closed);
+foo(42); // does not compile
+----
+
+
+[%notitle]
+=== `enum class`
+
+The downsides of `enum` is that it is "global", as it is not possible to reuse the identifier in other places.
+It also converts implicitely to other integral types:
+
+[source,cpp,tabsize=2]
+----
+enum status {open, closed};
+
+bool closed = false; // does not compile
+open + closed; // compiles
+----
+
+
+[%notitle]
+=== `enum class`
+
+`enum class` shares many of the properties of an `enum`, but
+
+  * introduces a new scope
+  * does not convert implicitely to integral types
+
+[source,cpp,tabsize=2]
+----
+enum class status {open, closed};
+
+void foo(status s);
+
+foo(status::open);
+foo(status::closed);
+foo(42); // does not compile
+
+bool closed = false; // compiles
+status::open + status::closed; // does not compile
+----
+
+
+[%notitle]
+=== `enum class`
+
+For both `enum` and `enum class` it is possible to cast an integral value to an enumeration type.
+But if the produced value is not within the range of the enumeration values, then the behaviour is undefined.
+
+// http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#1766
+// https://stackoverflow.com/questions/30122500/is-this-code-really-undefined-as-clang-seems-to-indicate

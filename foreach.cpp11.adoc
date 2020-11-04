@@ -1,0 +1,47 @@
+== foreach loop
+
+[source,cpp,tabsize=2]
+----
+void print(const std::vector<std::string>& vec){
+  for(std::vector<std::string>::const_iterator it = vec.cbegin(); it != vec.cend(); ++it){
+    std::cout << *it << '\n';
+  }
+----
+
+vs
+
+[source,cpp,tabsize=2]
+----
+void print(const std::vector<std::string>& vec){
+  for(const std::string& v : vec){
+    std::cout << v << '\n';
+  }
+}
+----
+
+=== foreach loop and auto
+
+[source,cpp,tabsize=2]
+----
+void print(const std::map<int, std::string>& m){
+  for(const std::pair<int, std::string>& v : m){
+    std::cout << v.second << '\n';
+  }
+}
+----
+
+vs
+
+[source,cpp,tabsize=2]
+----
+void print(const std::map<int, std::string>& m){
+  for(const auto& v : m){
+    std::cout << v.second << '\n';
+  }
+}
+----
+
+Who can spot the bug?
+
+
+https://wandbox.org/permlink/4IFbZr72RfUUWyCz[wandbox]

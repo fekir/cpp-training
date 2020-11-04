@@ -1,0 +1,51 @@
+== Container initialisation
+
+{cpp}11 introduces an uniform syntax for initialising containers with contained values.
+
+Works with all types of containers, for example with `std::vector`, `std::map`, `std::set`, `std::list` and `std::string`.
+It uses the same syntax we are used for C arrays and structs.
+
+[%notitle]
+[.columns]
+=== Container initialisation
+
+[.column]
+--
+Before {cpp}11
+[source,cpp,tabsize=2]
+----
+void foo(std::vector<int>);
+
+std::vector<int> vi;
+vi.push_back(42);
+vi.push_back(-1);
+
+foo(vi);
+----
+--
+
+[.column]
+--
+Since {cpp}11
+[source,cpp,tabsize=2]
+----
+void foo(std::vector<int>);
+
+std::vector<int> vi = {42, -1};
+
+foo(vi);
+
+
+//////////
+
+foo({42, -1});
+----
+--
+
+
+[%notitle]
+=== Container initialisation
+
+One limitation (still present in {cpp}20), is that the type requires a copy-constructor.
+
+There is work going on to http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1249r0.html[remove this limitation].

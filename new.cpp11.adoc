@@ -1,0 +1,58 @@
+== Content of this presentation
+
+Mainly whats "new" in {cpp}11.
+
+[.columns]
+=== {cpp}11
+
+[.column]
+[%step]
+  *  move semantic
+  * `std::unique_ptr`
+  * `std::shared_ptr`
+  * `nullptr`
+  * `std::array`
+  * thread support library
+  * `std::regex`
+  * variadic templates
+
+[.column]
+[%step]
+  * `auto`
+  * `constexpr`
+  * range based loop
+  * lambdas
+  * `override`
+  * underlying type for `enum`
+  * `enum class`
+
+[%notitle]
+[.columns]
+=== {cpp}11
+
+[.column]
+[%step]
+  * `using` vs `typedef`
+  * default member init
+  * `= delete`
+  * `= default`
+  * explicit bool
+  * `static_assert`
+  * `std::chrono`
+  * initialisation rules
+
+[.column]
+[%step]
+  * delegating constructors
+  * new value categories
+  * raw string literals
+  * suffix return type
+  * memory model
+  * `decltype`
+  * ...
+
+=== Only a subset
+
+As there will not be enough time
+
+
