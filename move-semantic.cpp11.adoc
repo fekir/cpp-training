@@ -37,20 +37,6 @@ Compilers are permitted (but not obliged, as with all optimisations) to assume t
 
 Such techniques are commonly referred as copy elision, and are supported by the mainstream compiler long ago.
 
-
-[%notitle]
-=== Copy semantic of {cpp}03
-Some reference on copy-elision:
-
-	* https://archive.org/details/moreeffectivec3500meye[Scott Meyers, More Effective C++, published in 1996]
-	* https://docs.microsoft.com/en-us/previous-versions/ms364057(v=vs.80)[Visual Studio 2005]
-	* https://www.drdobbs.com/move-constructors/184403855[Copy elision explained (2003)]
-
-
-And obbligatory examples with https://godbolt.org/z/s7PrrE[compiler explorer]
-
-
-
 === Copy semantic of {cpp}03
 
 Thus, with a more optimistic analysis
@@ -74,6 +60,19 @@ std::vector<std::string> v = create();
 6 allocation and 2 deallocations.
 Better than before, still not optimal, and not garanteed by the language, even if tested compilers are consistent.
 
+[%notitle]
+=== Copy semantic of {cpp}03
+Some reference on copy-elision:
+
+	* https://archive.org/details/moreeffectivec3500meye[Scott Meyers, More Effective C++, published in 1996]
+	* https://docs.microsoft.com/en-us/previous-versions/ms364057(v=vs.80)[Visual Studio 2005]
+	* https://www.drdobbs.com/move-constructors/184403855[Copy elision explained (2003)]
+
+
+And obbligatory examples with https://godbolt.org/z/s7PrrE[compiler explorer]
+
+////
+
 === Move semantic since {cpp}11
 
 Same code as before, unchanged.
@@ -95,7 +94,8 @@ std::vector<std::string> v = create();
 ----
 
 5 allocations, one deallocation.
-Still not optimal, but better than before, and we do not rely on the smartness of the compiler to remove allocations.
+Still not optimal, but better than before.
+//Also we do not rely on the smartness of the compiler to remove allocations.
 
 === Move semantic since {cpp}11
 
@@ -159,12 +159,12 @@ class string {
 	//~string()
 	//string(const string&);
 	//string& operator=(string that);
-	string(string&& that) : 
+	string(string&& that) noexcept :
 	 size(that.size), data(that.data) {
 		that.size = 0;
 		that.data = nullptr;
 	}
-	string& operator=(string&& that) {
+	string& operator=(string&& that) noexcept {
 		std::swap(data, that.data);
 		std::swap(size, that.size);
 		return *this;
@@ -203,7 +203,7 @@ If at least one of the following 5 special member functions is declared
 
 then you should declare them all.
 
-////////////////////// //// //// //// //// //// //// //// //// //// //// //// //// //// //// //// //// //// //// ////
+// ------------
 
 == Move: as a library user
 
@@ -225,11 +225,17 @@ The difference between the two operations is that copying from `a` won't change 
 Copying is a `const` operation on `a`.
 This is why copy construction/assignment functions should always take their parameter by `const&` or value.
 
-Move is a `noexcept` and non-`const` operation on `a`.
+Move should be a `noexcept` and non-`const` operation on `a`.
 Move construction/assignment functions should always be `noexcept` and take their parameter by (non-`const`) `&&`.
 
 [%notitle]
 === Move: for types author
 
-For copyable types, move is always an optimization of copy.
-When not following the rule of zero, explicitly write move functions for the type if copying is expensive enough to be worth optimizing, since copy is a valid implementation of move.
+For copyable types, move is an optimization of copy.
+//When not following the rule of zero, explicitly write move functions for the type if copying is expensive enough to be worth optimizing, since 
+Copy is a valid implementation of move.
+
+
+=== How it might affect program performance
+
+https://quick-bench.com/q/bi2cr2GwkmMBJTWOfi3zrUfJ4nw[quick-bench]

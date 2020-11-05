@@ -1,6 +1,6 @@
 == Move is not a silver bullet, it has issues too
 
-=== Not every type is moveble (and/or copyable)
+=== Not every type is movable (and/or copyable)
 
 [source,cpp,tabsize=2]
 ----
@@ -23,60 +23,38 @@ If the class wants to support move semantic, it has to change it's invariants.
 
 It makes the language specification more complex.
 
+
+=== Move is not always an optimisation
+
+As a copy is a valid move implementation, moves are not necessarily cheaper than copies
+
 === Which advantages does move-semantic provide?
 
-Performance, returning by value is cheap
+Performance
+
+[%notitle]
+=== temporaries and expiring values are cheap
 
 [source,cpp,tabsize=2]
 ----
 std::vector<std::string> create() {
 	std::vector<std::string> coll;
+	coll.reserve(3);
 	// ...
-	return coll; // no copies, garanteed by the standard, because of std::vector<T>(std::vector<T>&&);
+	coll.push_back(s+s); // because of push_back(T&&) and std::string(std::string&&);
+	coll.push_back(std::move(s)); // because of push_back(T&&) and std::string(std::string&&);
+	return coll; // because of std::vector<T>(std::vector<T>&&) and std::string(std::string&&);
 }
-
-std::vector<std::string> v = create();
 ----
+
+	* returning locals by value is cheap
+	* temporaries (unnamed) are cheap
+	* it is possible to "mark" manually a value as temporary
 
 [%notitle]
 === Which advantages does move-semantic provide
 
-Performance, temporaries (unnamed) are cheap
-
-[source,cpp,tabsize=2]
-----
-std::vector<std::string> create() {
-	std::vector<std::string> coll;
-	// ..
-	coll.push_back(s+s); // no copies, because of push_back(T&&) and std::string(std::string&&);
-	// ...
-	return coll;
-}
-
-std::vector<std::string> v = create();
-----
-
-[%notitle]
-=== Which advantages does move-semantic provide
-
-Performance, it is possible to "mark" manually a value as temporary
-
-[source,cpp,tabsize=2]
-----
-std::vector<std::string> create() {
-	std::vector<std::string> coll;
-	// ...
-	coll.push_back(std::move(s)); // no copies, because of push_back(T&&) and std::string(std::string&&);
-	return coll;
-}
-
-std::vector<std::string> v = create();
-----
-
-[%notitle]
-=== Which advantages does move-semantic provide
-
-Simpliciteness, as it is possible to return uncopyable (but moveable) types from function without adding further indirections.
+Simpliciteness: it is possible to return uncopyable (but moveable) types from function without adding further indirections.
 
 [source,cpp,tabsize=2]
 ----
@@ -84,20 +62,23 @@ struct type_with_costly_or_no_copy_constructor{ /* ... */};
 
 // allocates unnecessarily (which is a costly operation) to avoid a potential copy
 // should the caller check for nullptr?
-// is it an owning pointer? should it free it?
+// does it point to one or more elements?
+// is the pointed content shared with someone else?
+// is it an owning pointer?
+// should the caller free it? If yes, how?
 type_with_costly_or_no_copy_constructor* factory();
 
-// no overhead, less documentation needed
+// no overhead, less documentation needed, no leaks by design
 type_with_costly_or_no_copy_constructor factory();
 ----
 
 [%notitle]
 === Which advantages does move-semantic provide
 
-Correctness, before {cpp}11 it was not possible to implement something like `std::unique_ptr`.
+Correctness: before {cpp}11 it was not possible to implement something like `std::unique_ptr`.
 It's {cpp}03 counterpart, `std::auto_ptr` has been declared as broken beyond repair.
 
-It's copy constructor does not copy, so, for example, it' not safe to use with stl algorithms, containers and other functions.
+It's copy constructor does not copy, so, for example, it's not safe to use with stl algorithms, containers and other functions.
 
 [source,cpp,tabsize=2]
 ----
@@ -112,10 +93,11 @@ std::sort(v, v + N,
 [%notitle]
 === Which advantages does move-semantic provide
 
-Consistency, eases generic programming.
+Consistency: eases generic programming.
 The containers and algorithm from the standard library do work correctly (TM) with `std::unique_ptr`, but do not with `std::auto_ptr`.
 And they do not require any special or separate implementation.
 
+////
 [%notitle]
 === Which advantages does move-semantic provide
 
@@ -183,3 +165,4 @@ Therefore if the move operator is not `noexcept` (ie: it does provide the no-thr
 === Exception safety
 
 In practice it is uncommon have a non-`noexcept` constructor, just as having a non-`noexcept` destructor, unless moving is equivalent to copying.
+////

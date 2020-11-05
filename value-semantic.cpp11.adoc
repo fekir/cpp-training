@@ -1,6 +1,6 @@
 == Value semantic
 
-Value semantic is one of the pillars of modern {cpp}
+Value semantic is one of the main features of {cpp}
 
 [%notitle]
 === Value semantic
@@ -20,21 +20,21 @@ Copying an object creates a new distinct objects
 [source,cpp,tabsize=2]
 ----
 int main(){
-	int x = 42;
-	int y = x;
-	++x
-	std::cout << x << " " << y << '\n';
+  int x = 42;
+  int y = x;
+  ++x;
+  std::cout << "x = " << x << ", y = " << y << '\n';
 
-	std::string s = "data";
-	std::string t = s;
+  std::string s = "data";
+  std::string t = s;
 
-	if (s == t){
-		std::cout << "s and t are equal\n";
-	}
-	s[0] = 'D';
-	if (s != t){
-		std::cout << "s and t are not equal\n";
-	}
+  if (s == t){
+    std::cout << "s and t are equal\n";
+  }
+  s[0] = 'D';
+  if (s != t){
+    std::cout << "s and t are not equal\n";
+  }
 }
 ----
 
@@ -43,8 +43,8 @@ int main(){
 
 [source,cpp,tabsize=2]
 ----
-struct data {std::sting blob;};
-void foo(data d, std::vector<data>& vec){
+struct data {std::string blob;};
+void foo(data& d, std::vector<data>& vec){
 	vec.push_back(d);
 	d.blob = "new data";
 	// ...

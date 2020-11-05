@@ -55,4 +55,3 @@ Mainly whats "new" in {cpp}11.
 
 As there will not be enough time
 
-

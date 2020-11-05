@@ -26,7 +26,7 @@ All well-behaved types should probably do the same.
 
 === Does "but unspecified" mean the object's invariants might not hold?
 
-If any const function on an object makes it invalid, probably the function has a bug, or the class does not have the supposed invariant.
+If any function on an object makes it invalid, probably the function has a bug, or the class does not have the supposed invariant.
 
 In {cpp}, an object is valid (meets its invariants) for its entire lifetime, which is from the end of its construction to the start of its destruction.
 
