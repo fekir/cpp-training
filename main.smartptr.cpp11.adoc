@@ -1,0 +1,578 @@
+= {cpp}11
+:source-highlighter: highlightjs
+:data-uri:
+:revealjs_theme: solarized
+
+Smart Pointers
+
+[%notitle]
+== smart ptr
+
+{cpp}11 introduces `std::unique_ptr` and `std::shared_ptr`, and deprecates `std::auto_ptr`.
+
+This are for ease the management of memory and other resources.
+
+They remove the need to write destructors for nearly all use cases.
+
+== Smart pointers are owning pointers
+
+Smart pointers are "owning" pointers.
+They release the resources they point to.
+If you do not own the resource, use a "naked" pointer, a reference or make a copy.
+
+== What is a `unique_ptr`
+
+`std::unique_ptr` models exclusive ownership:
+
+	* std::unique_ptr owns the raw pointer
+	* there can't be a second owner (unless misuse)
+
+ownership can be passed to another `unique_pointer` by moving
+
+
+=== Example
+
+[source,cpp,tabsize=2]
+----
+struct s{ int i = 42; };
+
+void foo(){
+  std::unique_ptr<s> uptr0;
+  {
+    auto ptr = new s();
+    auto uptr1 = std::unique_ptr<s>(ptr);
+    //uptr0 = uptr1; // copy is a comp-time eror
+    uptr0 = std::move(uptr1); // moves pointer from uptr1 to uptr0
+  }
+}
+----
+
+=== `unique_ptr` models onwership, not only memory ownersip
+
+The owner calls `delete` by default, but it is possible to use other deleters too.
+
+[source,cpp,tabsize=2]
+----
+struct file_deleter {
+    void operator()(std::FILE* fp) { std::fclose(fp); }
+};
+using unique_file = std::unique_ptr<std::FILE, file_deleter>;
+
+auto f = unique_file(std::fopen("file.txt", "rw") );
+----
+
+
+== `unique_ptr` has been designed in a way to be easy to integrate in older code-basis
+
+=== No overhead
+
+[source,cpp,tabsize=2]
+----
+static_assert(
+	sizeof(T*) == sizeof(std::unique_ptr<T>), 
+	"size differs"
+)
+----
+
+No allocations, or other operation that could fail.
+Direct access to owned pointer.
+
+=== Behaves like a pointer
+
+[source,cpp,tabsize=2]
+----
+struct bar{void foo(){};};
+
+auto pb = new bar();
+auto upb = std::make_unique<bar>();
+
+pb->foo();
+upb->foo();
+
+if(pb){}
+if(pb == nullptr){}
+
+if(upb){}
+if(upb == nullptr){}
+
+bar& b = *pb;
+bar& ub = *upb;
+----
+
+=== It is possible to `.release()` ownership
+
+[source,cpp,tabsize=2]
+----
+struct bar{};
+
+auto uptr std::make_unique<bar>();
+auto ptr = uptr.release();
+// uptr now stores nullptr
+delete ptr;
+----
+
+
+== Example usage for string class
+
+[source,cpp,tabsize=2]
+----
+class string {
+	size_t size;
+	std::unique_ptr<char[]> data;
+
+ public:
+	explicit string(const char* p) :
+	 size(strlen(p)+1), data(std::make_unique<char[]>(size)) {
+		memcpy(data, p, size);
+	}
+	// no need to implement ~string
+
+	string(const string& that) :
+	 size(that.size), data(std::make_unique<char[]>(size)) {
+		memcpy(data, that.data, size);
+	}
+
+	string& operator=(string that) {
+		std::swap(data, that.data);
+		std::swap(size, that.size);
+		return *this;
+	}
+
+	// move semantic is for free, but as we have implemented copy-op,
+	// we need to tell the compiler to implement them
+	string(string&& that) noexcept = default;
+	string& operator=(string&& that) noexcept = default;
+};
+----
+
+=== If you need a container prefer vector
+
+While both constructs can be used to represent zero, one or more elements, the interface of `std::vector` is less error-prone.
+
+Also notice that `std::string` is generally https://github.com/elliotgoodrich/SSO-23/blob/master/README.md[more performant] than `std::vector`.
+
+Moral of the story: do not implement string from scratch, prefer `std::string` to `std::wstring`.
+
+== Replacing naked owning pointer in existing code
+
+As `unique_ptr` has an interface similar to a normal pointer, it is possible to replace the usage of naked pointers with `unique_ptr` iteratively.
+If the semantic of a construct is simple, then the operation is trivial, as errors are diagnosed by the compiler.
+
+
+[%notitle]
+=== Replacing naked owning pointer in existing code
+
+Generally removing the usage of naked owning pointers
+
+	* documents better who owns the resource
+	* permits the compiler to validate our assumptions, and diagnose errors
+	* simplifies code in unexpected ways
+
+
+=== Clearing containers
+
+before
+
+[source,cpp,tabsize=2]
+----
+	for( std::vector<T*>::iterator it = vec.begin(); it != vec.end(); ++it ){
+		delete *it;
+	}
+	vec.clear();
+----
+
+after
+
+[source,cpp,tabsize=2]
+----
+	vec.clear();
+----
+
+or even
+
+[source,cpp,tabsize=2]
+----
+----
+
+=== Inserting new elements in containers
+
+before
+
+[source,cpp,tabsize=2]
+----
+struct foo {
+	using internal_map = std::map<std::string, I*>;
+	using external_map = std::map<std::string, internal_map>;
+	external_map m_map;
+
+	~foo() {
+		for ( auto it = m_map.begin(); it != m_map.end(); ++it ) {
+			for ( auto subIt = it->second.begin(); subIt != it->second.end(); ++subIt ) {
+				delete subIt->second;
+			}
+		}
+
+	void bar(const std::string& str1, const std::string& str2, I* i) {
+		auto it = m_map.find(str1);
+		if ( it != m_map.end() ) {
+			auto subIt = it->second.find(str2);
+			if ( subIt != it->second.end() ) {
+				delete subIt->second;
+			}
+			it->second[str2] = i;
+		} else {
+			internal_map imap;
+			imap[str2] = i;
+			m_map[str1] = imap;
+		}
+	}
+}
+
+	// ...
+};
+----
+
+[%notitle]
+=== Inserting new elements in containers
+
+after
+
+[source,cpp,tabsize=2]
+----
+struct foo {
+	using internal_map = std::map<std::string, std::unique_ptr<I>>;
+	using external_map = std::map<std::string, internal_map>;
+	external_map m_map;
+
+	void bar(const std::string& str1, const std::string& str2, I* i) {
+		m_map[str1][str2].reset(i);
+	}
+
+	// ...
+};
+----
+
+== Rules of thumbs for avoiding leaks
+
+Without `unique_ptr` or similar alternatives
+
+	* enlist every place where a resource is allocated
+	* track where handles to the resources are passed
+	* verify that every resource is closed only once
+	* verify that the correct function for closing the resource is used
+
+It's hard and error prone to apply those guidelines consistently
+
+[%notitle]
+=== Rules of thumbs for avoiding leaks
+
+[source,cpp,tabsize=2]
+----
+C* foo();
+----
+
+Should we free/close the return value of `foo`.
+Do we own it?
+If yes, how?
+
+[%notitle]
+=== Rules of thumbs for avoiding leaks
+
+[source,cpp,tabsize=2]
+----
+void bar(C*);
+void foo(){
+	auto i = new C();
+	bar(i);
+}
+----
+
+Is it correct that no delete takes place?
+Does it happen inside `bar`?
+
+[%notitle]
+=== Rules of thumbs for avoiding leaks
+
+[source,cpp,tabsize=2]
+----
+void bar(C*);
+void foo(){
+	auto i = new C();
+	bar(i);
+	delete i;
+}
+----
+
+Is `i` always released?
+If not, is it correct?
+//If yes, is it by design or accident?
+
+[%notitle]
+=== Rules of thumbs for avoiding leaks
+
+[source,cpp,tabsize=2]
+----
+void bar(C*);
+void foo() {
+	auto i = new C();
+	try {
+		bar(i);
+	} catch (...) {
+		delete i;
+		throw;
+	}
+	delete i;
+}
+----
+
+Is very verbose and error-prone.
+
+[%notitle]
+=== Rules of thumbs for avoiding leaks
+
+[source,cpp,tabsize=2]
+----
+void bar(C*, C*);
+void foo() {
+	auto i = new C();
+	try {
+		auto j = new C();
+		try {
+			bar(i, j);
+		} catch (...) {
+			delete j;
+			throw;
+		}
+		delete j;
+	} catch (...) {
+		delete i;
+		throw;
+	}
+	delete i;
+}
+----
+
+It does not scale, no-one writes code like that.
+Imagine a function or constructor with 3 parameters.
+//Every language without destructor has similar issues.
+
+[%notitle]
+=== Rules of thumbs for avoiding leak
+
+Similar difficulties exists when implementing a class that owns more than one resource
+
+[source,cpp,tabsize=2]
+----
+struct X {
+	C* i;
+	C* j;
+	explicit X():
+	 i(new C()),
+	 j(new C()) {
+	}
+
+	~X(){
+		delete j;
+		delete i;
+	}
+};
+----
+
+Fixing `X` without using helper classes is left as exercise to the reader.
+
+== Rules of thumbs for avoiding leaks
+
+With `unique_ptr` or similar constructs
+
+	* Newer use non-owning handles
+	* verify if and where `.release()` is used, as it is equivalent to managing memory manually.
+
+Which is ideally equivalent to
+
+	* Do not handle resources manually
+
+[%notitle]
+=== Rules of thumbs for avoiding leaks
+
+If memory is not managed manually:
+
+[source,cpp,tabsize=2]
+----
+std::unique_ptr<C> foo();
+----
+
+[source,cpp,tabsize=2]
+----
+C* foo();
+----
+
+In both cases, from the function signature its clear if we own the returned value or not.
+In both cases, calling `foo()` does not cause any leak by design.
+
+[%notitle]
+=== Rules of thumbs for avoiding leaks
+
+If memory is not managed manually:
+
+[source,cpp,tabsize=2]
+----
+void bar(std::unique_ptr<C>);
+void foo(){
+	auto ptr = std::make_unique<C>();
+	bar(std::move(ptr));
+}
+----
+
+or
+
+[source,cpp,tabsize=2]
+----
+void bar(C*);
+void foo(){
+	auto ptr = std::make_unique<C>();
+	bar(ptr.get());
+}
+----
+
+then it's clear if `bar` takes ownership of the parameter or not.
+
+In both cases, there is no need to track about who owns the pointer.
+It also scales well, as the written code does not depend on the number of possible execution paths.
+//The compiler does it for us (unless calling `.release()`).
+//Also no need to think about exceptions.
+
+[%notitle]
+=== Rules of thumbs for avoiding leaks
+
+[source,cpp,tabsize=2]
+----
+struct X {
+	std::unique_ptr<C> i;
+	std::unique_ptr<C> j;
+	explicit X() :
+	 i(std::make_unique<C>()) ,
+	 j(std::make_unique<C>()) {
+	}
+	// ~X is compiler-generated
+};
+----
+
+`X` is leak-free.
+
+As a corollary of the single-responsibility principle:
+A class should own directly only one resource.
+
+[%notitle]
+=== Rules of thumbs for avoiding leak
+
+`.release()` is mostly necessary when working with external or C libraries, as we cannot change those functions to use `unique_ptr`.
+
+It is possible to wrap/hide those functions (which are a small subset of the code we control) and make them work with `unique_ptr` too.
+
+Supposing that third-party code is correct, it possible to keep track of places where `.release()` is needed to a very limited subset of code, and ensure the absence of leaks with a `grep`.
+
+// FIXME: add example with openssl
+
+
+[%notitle]
+=== example
+
+
+[source, cpp, tabsize=2]
+----
+auto attr_p = xmlGetProp(rNode, "p");
+----
+
+[source, cpp, tabsize=2]
+----
+struct free_xml_generic {
+	void operator()(void* handle) { xmlFree(handle); }
+};
+template <class T>
+using unique_xmlPtr = std::unique_ptr<T, free_xml_generic>;↲
+using unique_xmlChar = unique_xmlPtr<xmlChar>;↲
+
+inline unique_xmlChar get_unique_xmlProp(const xmlNode* node, const xmlChar* name) {
+	return unique_xmlChar(xmlGetProp(node, name));
+}
+#pragma GCC poison xmlGetProp
+
+auto attr_p = get_unique_xmlProp(rNode, "p");
+----
+
+[%notitle]
+=== example
+
+
+[source, cpp, tabsize=2]
+----
+EVP_PKEY* pKey = X509_get_pubkey(cert);
+----
+
+[source, cpp, tabsize=2]
+----
+unique_EVP_PKEY pKey(X509_get_pubkey(cert));
+----
+
+== shared_ptr
+
+Did not talk much about `std::shared_ptr` because it is not as useful as `std::unique_ptr`.
+
+[%notitle]
+=== shared_ptr
+
+It has a copy constructor, every copy increments a thread-safe counter:
+
+	* it is more difficult, if possible, to understand who owns the pointer
+	* can cause leaks with circular dependencies
+	* has overhead compared to a naked pointer
+	* the synchronisation is costly if not needed
+	* it is trivial to convert an `unique_ptr` to a `shared_ptr`, generally impossible to do the opposite.
+
+// FIXME: add performance example
+[%notitle]
+=== shared_ptr
+
+Nevertheless, there are valid use-cases.
+
+
+== rules of thumb when using `unique_ptr`
+
+=== Avoid passing `unique_ptr` by const-ref
+
+[source,cpp,tabsize=2]
+----
+class bar{ /* ... */ };
+// bad, forces the user to allocate bar on the heap,
+// even if foo cannot use that information
+void foo(const std::unique_ptr<bar>&)
+
+// better
+void foo(const bar*)
+
+// even better if bar cannot/should not be null
+void foo(const bar&)
+
+// even better if bar is "small"
+void foo(bar);
+----
+
+=== Pass by value to denote unconditional transfer in ownership
+
+[source,cpp,tabsize=2]
+----
+class X {
+		std::unique_ptr<int> i;
+	public:
+		explicit X(std::unique_ptr<int> ii) : i(std::move(ii)) {}
+};
+void bar(std::unique_ptr<int>);
+
+void foo(){
+	auto i = std::make_unique<int>(42);
+	X x(std::move(i));
+	bar(std::move(i));
+
+	bar(std::make_unique<int>(42));
+}
+----
