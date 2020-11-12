@@ -8,11 +8,11 @@ Smart Pointers
 [%notitle]
 == smart ptr
 
-{cpp}11 introduces `std::unique_ptr` and `std::shared_ptr`, and deprecates `std::auto_ptr`.
+{cpp}11 introduces `std::unique_ptr`, `std::shared_ptr`, `std::weak_ptr` and deprecates `std::auto_ptr`.
 
 This are for ease the management of memory and other resources.
 
-They remove the need to write destructors for nearly all use cases.
+They remove the need to write custom destructors for nearly all use cases.
 
 == Smart pointers are owning pointers
 
@@ -516,24 +516,26 @@ unique_EVP_PKEY pKey(X509_get_pubkey(cert));
 
 == shared_ptr
 
-Did not talk much about `std::shared_ptr` because it is not as useful as `std::unique_ptr`.
+Did not talk much about `std::shared_ptr` and `std::weak_ptr` because there are not as many use cases as with `std::unique_ptr`.
 
 [%notitle]
 === shared_ptr
 
 It has a copy constructor, every copy increments a thread-safe counter:
 
-	* it is more difficult, if possible, to understand who owns the pointer
+	* it is more difficult, if possible, to understand who owns the resource
 	* can cause leaks with circular dependencies
 	* has overhead compared to a naked pointer
 	* the synchronisation is costly if not needed
-	* it is trivial to convert an `unique_ptr` to a `shared_ptr`, generally impossible to do the opposite.
+	* it is trivial to convert an `unique_ptr` to a `shared_ptr`, generally impossible to do the opposite
 
 // FIXME: add performance example
 [%notitle]
 === shared_ptr
 
 Nevertheless, there are valid use-cases.
+
+They are not less important, but in most cases, shared ownership is best avoided.
 
 
 == rules of thumb when using `unique_ptr`
@@ -553,7 +555,7 @@ void foo(const bar*)
 // even better if bar cannot/should not be null
 void foo(const bar&)
 
-// even better if bar is "small"
+// even better if bar is "small", like integral types, enums or small data structures, like string_view, span, ...
 void foo(bar);
 ----
 
