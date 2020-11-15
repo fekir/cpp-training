@@ -539,9 +539,26 @@ It has a copy constructor, every copy increments a thread-safe counter:
 [%notitle]
 === shared_ptr
 
-Nevertheless, there are valid use-cases.
+Nevertheless, there are valid use-cases (cow, garbage collection, cache, ...)
 
 They are not less important, but in most cases, shared ownership is best avoided.
+
+
+////
+cache:
+
+std::shared_ptr<Bitmap> get_bitmap(const std::string & path){
+	static std::map<std::string, std::weak_ptr<Bitmap>> cache;
+	static std::mutex m;
+	std::lock_guard<std::mutex> hold(m);
+	auto wp& = cache[path];
+	auto sp = wp.lock();
+	if(!sp){
+		wp = sp = std::make_shared<Bitmap>(path);
+	}
+	return sp;
+}
+////
 
 
 == rules of thumb when using `unique_ptr`
