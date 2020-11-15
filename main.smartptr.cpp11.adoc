@@ -18,7 +18,7 @@ They remove the need to write custom destructors for nearly all use cases.
 
 Smart pointers are "owning" pointers.
 They release the resources they point to.
-If you do not own the resource, use a "naked" pointer, a reference or make a copy.
+If you do not own the resource, use a "raw" pointer, a reference or make a copy.
 
 == What is a `unique_ptr`
 
@@ -153,20 +153,43 @@ Also notice that `std::string` is generally https://github.com/elliotgoodrich/SS
 
 Moral of the story: do not implement string from scratch, prefer `std::string` to `std::wstring`.
 
-== Replacing naked owning pointer in existing code
+== Replacing raw owning pointer in existing code
 
-As `unique_ptr` has an interface similar to a normal pointer, it is possible to replace the usage of naked pointers with `unique_ptr` iteratively.
+As `unique_ptr` has an interface similar to a normal pointer, it is possible to replace the usage of raw pointers with `unique_ptr` iteratively.
 If the semantic of a construct is simple, then the operation is trivial, as errors are diagnosed by the compiler.
 
 
 [%notitle]
-=== Replacing naked owning pointer in existing code
+=== Replacing raw owning pointer in existing code
 
-Generally removing the usage of naked owning pointers
+Generally removing the usage of raw owning pointers
 
 	* documents better who owns the resource
 	* permits the compiler to validate our assumptions, and diagnose errors
 	* simplifies code in unexpected ways
+
+=== Assigning pointers
+
+before
+[source,cpp,tabsize=2]
+----
+delete ptr;
+ptr = new X();
+
+// or
+delete ptr;
+ptr = newptr;
+----
+
+after
+
+[source,cpp,tabsize=2]
+----
+ptr = std::make_unique<X>();
+
+// or
+ptr.reset(newptr);
+----
 
 
 === Clearing containers
@@ -175,17 +198,17 @@ before
 
 [source,cpp,tabsize=2]
 ----
-	for( std::vector<T*>::iterator it = vec.begin(); it != vec.end(); ++it ){
-		delete *it;
-	}
-	vec.clear();
+for( std::vector<T*>::iterator it = vec.begin(); it != vec.end(); ++it ){
+	delete *it;
+}
+vec.clear();
 ----
 
 after
 
 [source,cpp,tabsize=2]
 ----
-	vec.clear();
+vec.clear();
 ----
 
 or even
@@ -394,8 +417,6 @@ Which is ideally equivalent to
 [%notitle]
 === Rules of thumbs for avoiding leaks
 
-If memory is not managed manually:
-
 [source,cpp,tabsize=2]
 ----
 std::unique_ptr<C> foo();
@@ -411,8 +432,6 @@ In both cases, calling `foo()` does not cause any leak by design.
 
 [%notitle]
 === Rules of thumbs for avoiding leaks
-
-If memory is not managed manually:
 
 [source,cpp,tabsize=2]
 ----
@@ -437,7 +456,7 @@ void foo(){
 then it's clear if `bar` takes ownership of the parameter or not.
 
 In both cases, there is no need to track about who owns the pointer.
-It also scales well, as the written code does not depend on the number of possible execution paths.
+It also scales; the written code does not depend on the number of execution paths.
 //The compiler does it for us (unless calling `.release()`).
 //Also no need to think about exceptions.
 
@@ -500,20 +519,7 @@ inline unique_xmlChar get_unique_xmlProp(const xmlNode* node, const xmlChar* nam
 auto attr_p = get_unique_xmlProp(rNode, "p");
 ----
 
-[%notitle]
-=== example
-
-
-[source, cpp, tabsize=2]
-----
-EVP_PKEY* pKey = X509_get_pubkey(cert);
-----
-
-[source, cpp, tabsize=2]
-----
-unique_EVP_PKEY pKey(X509_get_pubkey(cert));
-----
-
+// had better example with openssl
 == shared_ptr
 
 Did not talk much about `std::shared_ptr` and `std::weak_ptr` because there are not as many use cases as with `std::unique_ptr`.
@@ -525,7 +531,7 @@ It has a copy constructor, every copy increments a thread-safe counter:
 
 	* it is more difficult, if possible, to understand who owns the resource
 	* can cause leaks with circular dependencies
-	* has overhead compared to a naked pointer
+	* has non-trivial overhead compared to a raw pointer
 	* the synchronisation is costly if not needed
 	* it is trivial to convert an `unique_ptr` to a `shared_ptr`, generally impossible to do the opposite
 
