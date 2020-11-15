@@ -519,7 +519,7 @@ inline unique_xmlChar get_unique_xmlProp(const xmlNode* node, const xmlChar* nam
 auto attr_p = get_unique_xmlProp(rNode, "p");
 ----
 
-// had better example with openssl
+// had better example with openssl and it's containers
 == shared_ptr
 
 Did not talk much about `std::shared_ptr` and `std::weak_ptr` because there are not as many use cases as with `std::unique_ptr`.
@@ -551,6 +551,7 @@ They are not less important, but in most cases, shared ownership is best avoided
 [source,cpp,tabsize=2]
 ----
 class bar{ /* ... */ };
+
 // bad, forces the user to allocate bar on the heap,
 // even if foo cannot use that information
 void foo(const std::unique_ptr<bar>&)
@@ -563,6 +564,26 @@ void foo(const bar&)
 
 // even better if bar is "small", like integral types, enums or small data structures, like string_view, span, ...
 void foo(bar);
+----
+
+=== Avoid returning `unique_ptr` by const-ref
+
+[source,cpp,tabsize=2]
+----
+// bad, leaks implementation details that the caller cannot use
+class bar{
+	const std::unique_ptr<T>& foo();
+};
+
+// better
+class bar{
+	T* foo();
+};
+
+// even better if return value cannot/should not be null
+class bar{
+	const T& foo();
+};
 ----
 
 === Pass by value to denote unconditional transfer in ownership
