@@ -101,51 +101,10 @@ struct bar{};
 
 auto uptr std::make_unique<bar>();
 auto ptr = uptr.release();
-// uptr now stores nullptr
+// uptr does not own anything, it owns nullptr
 delete ptr;
 ----
 
-
-== Example usage for string class
-
-[source,cpp,tabsize=2]
-----
-class string {
-	size_t size;
-	std::unique_ptr<char[]> data;
-
- public:
-	explicit string(const char* p) :
-	 size(strlen(p)+1), data(std::make_unique<char[]>(size)) {
-		memcpy(data, p, size);
-	}
-	// no need to implement ~string
-
-	string(const string& that) :
-	 size(that.size), data(std::make_unique<char[]>(size)) {
-		memcpy(data, that.data, size);
-	}
-
-	string& operator=(string that) {
-		std::swap(data, that.data);
-		std::swap(size, that.size);
-		return *this;
-	}
-
-	// move semantic is for free, but as we have implemented copy-op,
-	// we need to tell the compiler to implement them
-	string(string&& that) noexcept = default;
-	string& operator=(string&& that) noexcept = default;
-};
-----
-
-=== If you need a container prefer vector
-
-While both constructs can be used to represent zero, one or more elements, the interface of `std::vector` is less error-prone.
-
-Also notice that `std::string` is generally https://github.com/elliotgoodrich/SSO-23/blob/master/README.md[more performant] than `std::vector`.
-
-Moral of the story: do not implement string from scratch, prefer `std::string` to `std::wstring`.
 
 == Replacing raw owning pointer in existing code
 
@@ -617,3 +576,7 @@ void foo(){
 	bar(std::make_unique<int>(42));
 }
 ----
+
+=== If you need a container prefer vector
+
+While both constructs can be used to represent zero, one or more elements, the interface of `std::vector` is less error-prone.
