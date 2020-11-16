@@ -34,7 +34,7 @@ ownership can be passed to another `unique_pointer` by moving
 
 [source,cpp,tabsize=2]
 ----
-struct s{ int i = 42; };
+struct s{ };
 
 void foo(){
   std::unique_ptr<s> uptr0;
@@ -560,14 +560,13 @@ std::shared_ptr<Bitmap> get_bitmap(const std::string & path){
 }
 ////
 
-
 == rules of thumb when using `unique_ptr`
 
 === Avoid passing `unique_ptr` by const-ref
 
 [source,cpp,tabsize=2]
 ----
-class bar{ /* ... */ };
+struct bar{ };
 
 // bad, forces the user to allocate bar on the heap,
 // even if foo cannot use that information
