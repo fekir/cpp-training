@@ -66,16 +66,10 @@ auto f = unique_file(std::fopen("file.txt", "rw") );
 
 === No overhead
 
-[source,cpp,tabsize=2]
-----
-static_assert(
-	sizeof(T*) == sizeof(std::unique_ptr<T>), 
-	"size differs"
-)
-----
-
-No allocations, or other operation that could fail.
-Direct access to owned pointer.
+	* same size of a raw pointer
+	* no allocations, or other operation that could fail
+	* provides direct access to owned pointer
+	* works with incomplete types
 
 === Behaves like a pointer
 
@@ -167,6 +161,7 @@ Generally removing the usage of raw owning pointers
 	* documents better who owns the resource
 	* permits the compiler to validate our assumptions, and diagnose errors
 	* simplifies code in unexpected ways
+	* avoid leaks that are easy to oversee
 
 === Assigning pointers
 
@@ -453,9 +448,7 @@ void foo(){
 }
 ----
 
-then it's clear if `bar` takes ownership of the parameter or not.
-
-In both cases, there is no need to track about who owns the pointer.
+In both cases it's clear if `bar` takes ownership of the parameter or not, there is no need to track about who owns the pointer.
 It also scales; the written code does not depend on the number of execution paths.
 //The compiler does it for us (unless calling `.release()`).
 //Also no need to think about exceptions.
@@ -496,11 +489,14 @@ Supposing that third-party code is correct, it possible to keep track of places 
 [%notitle]
 === example
 
+before
 
 [source, cpp, tabsize=2]
 ----
 auto attr_p = xmlGetProp(rNode, "p");
 ----
+
+after
 
 [source, cpp, tabsize=2]
 ----
