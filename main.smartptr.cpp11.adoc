@@ -19,7 +19,7 @@ They remove the need to write custom destructors for nearly all use cases.
 Smart pointers are "owning" pointers.
 They release the resource they point to.
 
-If you do not own the resource, use a "raw" pointer, a reference or make a copy.
+If you do not own the resource, use a "raw" pointer (or a reference).
 
 == What is a `unique_ptr`
 
@@ -40,8 +40,7 @@ struct bar{ };
 void foo(){
   std::unique_ptr<bar> uptr0;
   {
-    auto ptr = new bar();
-    auto uptr1 = std::unique_ptr<bar>(ptr);
+    auto uptr1 = std::make_unique<bar>();
     //uptr0 = uptr1; // copy is a comp-time eror
     uptr0 = std::move(uptr1); // moves pointer from uptr1 to uptr0
   }
@@ -358,7 +357,10 @@ struct bar {
 };
 ----
 
-Fixing `X` without using helper classes is left as exercise to the reader.
+Fixing `bar` without using helper classes is left as exercise to the reader.
+
+
+// http://www.gotw.ca/gotw/056.htm
 
 == Rules of thumbs for avoiding leaks
 
@@ -431,7 +433,7 @@ struct bar {
 };
 ----
 
-`X` is leak-free.
+`bar` is leak-free.
 
 As a corollary of the single-responsibility principle:
 A class should own directly only one resource.
@@ -531,10 +533,10 @@ struct bar{ };
 void foo(const std::unique_ptr<bar>&);
 
 // better
-void foo(const bar*)
+void foo(const bar*);
 
 // even better if bar cannot/should not be null
-void foo(const bar&)
+void foo(const bar&);
 
 // even better if bar is "small", like integral types, enums or small data structures, like string_view, span, ...
 void foo(bar);
