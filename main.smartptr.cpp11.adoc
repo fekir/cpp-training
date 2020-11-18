@@ -34,13 +34,13 @@ ownership can be passed to another `unique_pointer` by moving
 
 [source,cpp,tabsize=2]
 ----
-struct s{ };
+struct bar{ };
 
 void foo(){
-  std::unique_ptr<s> uptr0;
+  std::unique_ptr<bar> uptr0;
   {
-    auto ptr = new s();
-    auto uptr1 = std::unique_ptr<s>(ptr);
+    auto ptr = new bar();
+    auto uptr1 = std::unique_ptr<bar>(ptr);
     //uptr0 = uptr1; // copy is a comp-time eror
     uptr0 = std::move(uptr1); // moves pointer from uptr1 to uptr0
   }
@@ -97,7 +97,7 @@ bar& ub = *upb;
 
 [source,cpp,tabsize=2]
 ----
-struct bar{};
+struct bar{ };
 
 auto uptr std::make_unique<bar>();
 auto ptr = uptr.release();
@@ -340,15 +340,15 @@ Similar difficulties exists when implementing a class that owns more than one re
 
 [source,cpp,tabsize=2]
 ----
-struct X {
+struct bar {
 	C* i;
 	C* j;
-	explicit X():
+	explicit bar():
 	 i(new C()),
 	 j(new C()) {
 	}
 
-	~X(){
+	~bar(){
 		delete j;
 		delete i;
 	}
@@ -417,14 +417,14 @@ It also scales; the written code does not depend on the number of execution path
 
 [source,cpp,tabsize=2]
 ----
-struct X {
+struct bar {
 	std::unique_ptr<C> i;
 	std::unique_ptr<C> j;
-	explicit X() :
+	explicit bar() :
 	 i(std::make_unique<C>()) ,
 	 j(std::make_unique<C>()) {
 	}
-	// ~X is compiler-generated
+	// ~bar is compiler-generated
 };
 ----
 
