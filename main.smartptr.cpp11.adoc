@@ -17,7 +17,8 @@ They remove the need to write custom destructors for nearly all use cases.
 == Smart pointers are owning pointers
 
 Smart pointers are "owning" pointers.
-They release the resources they point to.
+They release the resource they point to.
+
 If you do not own the resource, use a "raw" pointer, a reference or make a copy.
 
 == What is a `unique_ptr`
@@ -58,11 +59,11 @@ struct file_deleter {
 };
 using unique_file = std::unique_ptr<std::FILE, file_deleter>;
 
-auto f = unique_file(std::fopen("file.txt", "rw") );
+auto f = unique_file(std::fopen("file.txt", "rw"));
 ----
 
 
-== `unique_ptr` has been designed in a way to be easy to integrate in older code-basis
+== `unique_ptr` has been designed in a way to be easy to integrate in existing code-basis
 
 === No overhead
 
@@ -105,20 +106,22 @@ auto ptr = uptr.release();
 delete ptr;
 ----
 
+It is generally best avoided, but might be necessary.
+
 
 == Replacing raw owning pointer in existing code
 
 As `unique_ptr` has an interface similar to a normal pointer, it is possible to replace the usage of raw pointers with `unique_ptr` iteratively.
-If the semantic of a construct is simple, then the operation is trivial, as errors are diagnosed by the compiler.
 
+During the process, most error are diagnosed by the compiler.
 
 [%notitle]
 === Replacing raw owning pointer in existing code
 
 Generally removing the usage of raw owning pointers
 
-	* documents better who owns the resource
-	* permits the compiler to validate our assumptions, and diagnose errors
+	* documents better than a comment who owns the resource
+	* permits the compiler to validate assumptions and diagnose errors
 	* simplifies code in unexpected ways
 	* avoid leaks that are easy to oversee
 
@@ -361,8 +364,8 @@ Fixing `X` without using helper classes is left as exercise to the reader.
 
 With `unique_ptr` or similar constructs
 
-	* Newer use non-owning handles
-	* verify if and where `.release()` is used, as it is equivalent to managing memory manually.
+	* Newer use non-owning handles for owning resources
+	* verify if and where `.release()` is used, as it is equivalent to manage resources manually
 
 Which is ideally equivalent to
 
@@ -500,7 +503,7 @@ They are not less important, but in most cases, shared ownership is best avoided
 
 
 ////
-cache:
+Cache example:
 
 std::shared_ptr<Bitmap> get_bitmap(const std::string & path){
 	static std::map<std::string, std::weak_ptr<Bitmap>> cache;
@@ -525,7 +528,7 @@ struct bar{ };
 
 // bad, forces the user to allocate bar on the heap,
 // even if foo cannot use that information
-void foo(const std::unique_ptr<bar>&)
+void foo(const std::unique_ptr<bar>&);
 
 // better
 void foo(const bar*)
@@ -542,19 +545,13 @@ void foo(bar);
 [source,cpp,tabsize=2]
 ----
 // bad, leaks implementation details that the caller cannot use
-class bar{
-	const std::unique_ptr<T>& foo();
-};
+const std::unique_ptr<T>& foo();
 
 // better
-class bar{
-	T* foo();
-};
+T* foo();
 
 // even better if return value cannot/should not be null
-class bar{
-	const T& foo();
-};
+const T& foo();
 ----
 
 === Pass by value to denote unconditional transfer in ownership
@@ -576,7 +573,3 @@ void foo(){
 	bar(std::make_unique<int>(42));
 }
 ----
-
-=== If you need a container prefer vector
-
-While both constructs can be used to represent zero, one or more elements, the interface of `std::vector` is less error-prone.
